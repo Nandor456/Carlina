@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: carlina_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: carlina
+      POSTGRES_PASSWORD: carlina_password
+      POSTGRES_DB: carlina_db
+    ports:
+      - "5436:5432"
+    volumes:
+      - carlina_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  carlina_postgres_data:
