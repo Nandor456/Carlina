@@ -192,7 +192,7 @@ class ApiService {
     final formData = FormData.fromMap({
       'file': await MultipartFile.fromFile(file.path),
       'kind': kind,
-      if (expirationDate != null) 'expirationDate': expirationDate,
+      'expirationDate': ?expirationDate,
       if (notes != null && notes.isNotEmpty) 'notes': notes,
     });
     final res = await _dio.post(
