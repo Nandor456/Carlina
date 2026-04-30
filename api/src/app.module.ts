@@ -18,7 +18,7 @@ import { NotificationsModule } from './notifications/notifications.module.js';
     ConfigModule.forRoot({
       isGlobal: true,
       load: [databaseConfig],
-      envFilePath: '.env',
+      envFilePath: `.env.${process.env.NODE_ENV ?? 'development'}`,
     }),
 
     // ── Database ─────────────────────────────────────────────

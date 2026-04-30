@@ -1,9 +1,11 @@
-import 'package:cookie_jar/cookie_jar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'firebase_options.dart';
 
 import 'core/theme/app_theme.dart';
 import 'features/auth/providers/auth_provider.dart';
@@ -11,19 +13,25 @@ import 'features/auth/screens/login_screen.dart';
 import 'features/dashboard/screens/dashboard_screen.dart';
 import 'features/vehicle_detail/screens/vehicle_detail_screen.dart';
 
+@pragma('vm:entry-point')
+Future<void> _firebaseBackgroundHandler(RemoteMessage _) async {}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await dotenv.load(fileName: '.env');
+  const flavor = String.fromEnvironment('FLAVOR', defaultValue: 'dev');
+  await dotenv.load(fileName: '.env.$flavor');
 
-  final supportDir = await getApplicationSupportDirectory();
-  final cookieJar = PersistCookieJar(
-    storage: FileStorage('${supportDir.path}/cookies'),
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundHandler);
 
   runApp(
     ProviderScope(
-      overrides: [cookieJarProvider.overrideWithValue(cookieJar)],
+      overrides: [
+        tokenStorageProvider.overrideWithValue(
+          TokenStorage(const FlutterSecureStorage()),
+        ),
+      ],
       child: const AutoDocApp(),
     ),
   );
@@ -37,7 +45,7 @@ class AutoDocApp extends ConsumerWidget {
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
-      title: 'AutoDoc Tracker',
+      title: 'Carlina',
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: ThemeMode.system,

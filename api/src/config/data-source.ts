@@ -1,9 +1,11 @@
-import 'dotenv/config';
+import { config as dotenvConfig } from 'dotenv';
 import { DataSource } from 'typeorm';
 import { Attachment } from '../attachments/attachment.entity.js';
 import { Document } from '../documents/document.entity.js';
 import { User } from '../users/user.entity.js';
 import { Vehicle } from '../vehicles/vehicle.entity.js';
+
+dotenvConfig({ path: `.env.${process.env.NODE_ENV ?? 'development'}` });
 
 export default new DataSource({
   type: 'postgres',

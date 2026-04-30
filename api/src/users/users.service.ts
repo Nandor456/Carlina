@@ -64,4 +64,8 @@ export class UsersService {
     if (!user.passwordHash) return false;
     return bcrypt.compare(password, user.passwordHash);
   }
+
+  async updateFcmToken(userId: string, token: string): Promise<void> {
+    await this.usersRepo.update(userId, { fcmToken: token });
+  }
 }

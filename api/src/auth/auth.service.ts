@@ -1,4 +1,5 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { OAuth2Client } from 'google-auth-library';
 import { UsersService } from '../users/users.service.js';
 import { User } from '../users/user.entity.js';
@@ -7,7 +8,16 @@ import { User } from '../users/user.entity.js';
 export class AuthService {
   private readonly googleClient = new OAuth2Client();
 
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly jwtService: JwtService,
+  ) { }
+
+  generateToken(user: User): { accessToken: string } {
+    return {
+      accessToken: this.jwtService.sign({ sub: user.id, email: user.email }),
+    };
+  }
 
   async validateLocalUser(
     email: string,

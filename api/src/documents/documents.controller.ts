@@ -16,10 +16,10 @@ import type { Request } from 'express';
 import { DocumentsService } from './documents.service.js';
 import { CreateDocumentDto } from './dto/create-document.dto.js';
 import { UpdateDocumentDto } from './dto/update-document.dto.js';
-import { AuthenticatedGuard } from '../auth/guards/authenticated.guard.js';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { User } from '../users/user.entity.js';
 
-@UseGuards(AuthenticatedGuard)
+@UseGuards(JwtAuthGuard)
 @Controller('vehicles/:vehicleId/documents')
 export class DocumentsController {
   constructor(private readonly documentsService: DocumentsService) {}

@@ -56,7 +56,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 Icon(Icons.directions_car_rounded, size: 72, color: cs.primary),
                 const SizedBox(height: 12),
                 Text(
-                  'AutoDoc Tracker',
+                  'Carlina',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),

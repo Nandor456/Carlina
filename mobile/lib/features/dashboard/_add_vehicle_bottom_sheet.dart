@@ -82,9 +82,11 @@ class _AddVehicleBottomSheetState
               textCapitalization: TextCapitalization.characters,
               validator: (v) {
                 if (v == null || v.isEmpty) return 'Required';
-                final pattern = RegExp(r'^[A-Z]{1,2}\s\d{2}\s[A-Z]{3}$');
+                final pattern = RegExp(
+                  r'^(?:[A-Z]{1,2}\s\d{2,3}\s[A-Z]{3}|[A-Z]{3}-\d{3}|[A-Z]{2}\s[A-Z]{2}-\d{3})$',
+                );
                 if (!pattern.hasMatch(v.trim().toUpperCase())) {
-                  return 'Format: CJ 01 ABC';
+                  return 'Format: CJ 01 ABC OR ABC-123';
                 }
                 return null;
               },

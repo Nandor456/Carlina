@@ -16,6 +16,7 @@ abstract class ApiConstants {
   static const String logout = '/auth/logout';
   static const String me = '/auth/me';
   static const String googleLogin = '/auth/google';
+  static const String fcmToken = '/auth/fcm-token';
 
   // Vehicles
   static const String vehicles = '/vehicles';

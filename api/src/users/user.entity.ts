@@ -32,6 +32,9 @@ export class User {
   @Column({ type: 'varchar', unique: true, nullable: true })
   googleId: string | null;
 
+  @Column({ type: 'varchar', nullable: true })
+  fcmToken: string | null;
+
   @OneToMany(() => Vehicle, (vehicle) => vehicle.user)
   vehicles!: Relation<Vehicle[]>;
 

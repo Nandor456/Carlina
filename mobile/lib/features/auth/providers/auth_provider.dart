@@ -1,20 +1,32 @@
-import 'package:cookie_jar/cookie_jar.dart';
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/network/api_service.dart';
 
-// ── Cookie jar (overridden in main() with PersistCookieJar) ──
-final cookieJarProvider = Provider<CookieJar>(
-  (ref) => throw UnimplementedError('cookieJarProvider must be overridden'),
+// ── Token storage ────────────────────────────────────────────
+
+class TokenStorage {
+  const TokenStorage(this._storage);
+  final FlutterSecureStorage _storage;
+  static const _key = 'auth_token';
+
+  Future<String?> read() => _storage.read(key: _key);
+  Future<void> write(String token) => _storage.write(key: _key, value: token);
+  Future<void> delete() => _storage.delete(key: _key);
+}
+
+final tokenStorageProvider = Provider<TokenStorage>(
+  (ref) => throw UnimplementedError('tokenStorageProvider must be overridden'),
 );
 
 // ── Singleton API service ────────────────────────────────────
-final apiServiceProvider = Provider<ApiService>(
-  (ref) => ApiService(cookieJar: ref.watch(cookieJarProvider)),
-);
+
+final apiServiceProvider = Provider<ApiService>((ref) => ApiService());
 
 final googleSignInProvider = Provider<GoogleSignIn>((ref) {
   final clientId = kIsWeb
@@ -35,6 +47,7 @@ final googleSignInProvider = Provider<GoogleSignIn>((ref) {
 });
 
 // ── Auth state ───────────────────────────────────────────────
+
 @immutable
 class AuthState {
   const AuthState({
@@ -44,16 +57,9 @@ class AuthState {
     this.error,
   });
 
-  /// Current user, or null if anonymous.
   final UserModel? user;
-
-  /// True until the initial /me check completes. Used to gate routing.
   final bool isInitializing;
-
-  /// True while a login/register/logout call is in flight.
   final bool isLoading;
-
-  /// Last error message from a failed auth call (null on success).
   final String? error;
 
   bool get isAuthenticated => user != null;
@@ -74,34 +80,45 @@ class AuthState {
 }
 
 class AuthNotifier extends StateNotifier<AuthState> {
-  AuthNotifier(this._api, this._googleSignIn) : super(const AuthState()) {
+  AuthNotifier(this._api, this._tokenStorage, this._googleSignIn)
+      : super(const AuthState()) {
     _bootstrap();
   }
 
   final ApiService _api;
+  final TokenStorage _tokenStorage;
   final GoogleSignIn _googleSignIn;
 
-  /// Called once on app start. Reads any persisted session cookie and tries
-  /// to fetch the current user. Whether it succeeds or fails, isInitializing
-  /// flips to false so the router can decide where to send the user.
+  /// On app start: load any persisted token, validate it via /me, then ungate routing.
   Future<void> _bootstrap() async {
     try {
-      final json = await _api.getMe();
-      state = state.copyWith(
-        user: json == null ? null : UserModel.fromJson(json),
-        clearUser: json == null,
-        isInitializing: false,
-      );
-    } catch (_) {
-      state = state.copyWith(clearUser: true, isInitializing: false);
-    }
+      final token = await _tokenStorage.read();
+      if (token != null) {
+        _api.setToken(token);
+        final json = await _api.getMe();
+        if (json != null) {
+          state = state.copyWith(
+            user: UserModel.fromJson(json),
+            isInitializing: false,
+          );
+          unawaited(_registerFcmToken());
+          return;
+        }
+        // Token rejected — clear it
+        await _tokenStorage.delete();
+        _api.setToken(null);
+      }
+    } catch (_) {}
+    state = state.copyWith(clearUser: true, isInitializing: false);
   }
 
   Future<bool> login(String email, String password) async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       final json = await _api.login(email: email, password: password);
+      await _persistToken(json);
       state = state.copyWith(user: UserModel.fromJson(json), isLoading: false);
+      unawaited(_registerFcmToken());
       return true;
     } on ApiException catch (e) {
       state = state.copyWith(
@@ -126,7 +143,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
         password: password,
         fullName: fullName,
       );
+      await _persistToken(json);
       state = state.copyWith(user: UserModel.fromJson(json), isLoading: false);
+      unawaited(_registerFcmToken());
       return true;
     } on ApiException catch (e) {
       state = state.copyWith(
@@ -163,7 +182,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
 
       final json = await _api.loginWithGoogle(idToken: idToken);
+      await _persistToken(json);
       state = state.copyWith(user: UserModel.fromJson(json), isLoading: false);
+      unawaited(_registerFcmToken());
       return true;
     } on ApiException catch (e) {
       state = state.copyWith(isLoading: false, error: e.message);
@@ -175,23 +196,37 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
-    try {
-      await _api.logout();
-    } catch (_) {
-      // Ignore — we want to clear local state regardless
-    }
+    await _tokenStorage.delete();
+    _api.setToken(null);
     try {
       await _googleSignIn.signOut();
-    } catch (_) {
-      // Ignore — local API session state is the source of truth.
-    }
+    } catch (_) {}
     state = const AuthState(isInitializing: false);
+  }
+
+  Future<void> _persistToken(Map<String, dynamic> json) async {
+    final token = json['accessToken'] as String?;
+    if (token != null) {
+      await _tokenStorage.write(token);
+      _api.setToken(token);
+    }
+  }
+
+  Future<void> _registerFcmToken() async {
+    try {
+      final messaging = FirebaseMessaging.instance;
+      final settings = await messaging.requestPermission();
+      if (settings.authorizationStatus == AuthorizationStatus.denied) return;
+      final fcmToken = await messaging.getToken();
+      if (fcmToken != null) await _api.registerFcmToken(fcmToken);
+    } catch (_) {}
   }
 }
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>(
   (ref) => AuthNotifier(
     ref.watch(apiServiceProvider),
+    ref.watch(tokenStorageProvider),
     ref.watch(googleSignInProvider),
   ),
 );

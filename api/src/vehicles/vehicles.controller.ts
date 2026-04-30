@@ -22,12 +22,12 @@ import type { Request, Response } from 'express';
 import { VehiclesService } from './vehicles.service.js';
 import { CreateVehicleDto } from './dto/create-vehicle.dto.js';
 import { UpdateVehicleDto } from './dto/update-vehicle.dto.js';
-import { AuthenticatedGuard } from '../auth/guards/authenticated.guard.js';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { User } from '../users/user.entity.js';
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10 MB
 
-@UseGuards(AuthenticatedGuard)
+@UseGuards(JwtAuthGuard)
 @Controller('vehicles')
 export class VehiclesController {
   constructor(private readonly vehiclesService: VehiclesService) {}

@@ -12,9 +12,13 @@ import {
 export class CreateVehicleDto {
   @IsString()
   @IsNotEmpty()
-  @Matches(/^[A-Z]{1,2}\s\d{2}\s[A-Z]{3}$/, {
-    message: 'License plate must match Romanian format, e.g. CJ 01 ABC',
-  })
+  @Matches(
+    /^(?:[A-Z]{1,2}\s\d{2,3}\s[A-Z]{3}|[A-Z]{3}-\d{3}|[A-Z]{2}\s[A-Z]{2}-\d{3})$/,
+    {
+      message:
+        'License plate must match Romanian (e.g., CJ 01 ABC, B 123 ABC) or Hungarian (e.g., ABC-123, AA BB-123) formats',
+    },
+  )
   licensePlate!: string;
 
   @IsString()

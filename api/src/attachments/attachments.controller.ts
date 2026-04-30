@@ -21,12 +21,12 @@ import type { Request, Response } from 'express';
 import { AttachmentsService } from './attachments.service.js';
 import { CreateAttachmentDto } from './dto/create-attachment.dto.js';
 import { UpdateAttachmentDto } from './dto/update-attachment.dto.js';
-import { AuthenticatedGuard } from '../auth/guards/authenticated.guard.js';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { User } from '../users/user.entity.js';
 
 const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15 MB
 
-@UseGuards(AuthenticatedGuard)
+@UseGuards(JwtAuthGuard)
 @Controller('vehicles/:vehicleId/attachments')
 export class AttachmentsController {
   constructor(private readonly attachmentsService: AttachmentsService) {}

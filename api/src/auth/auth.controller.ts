@@ -2,21 +2,20 @@ import {
   Controller,
   Post,
   Get,
+  Patch,
   Body,
   UseGuards,
   Req,
-  Res,
   HttpCode,
   HttpStatus,
   ConflictException,
   BadRequestException,
 } from '@nestjs/common';
-import type { Request, Response } from 'express';
+import type { Request } from 'express';
 import { AuthService } from './auth.service.js';
 import { UsersService } from '../users/users.service.js';
 import { LocalAuthGuard } from './guards/local-auth.guard.js';
-import { AuthGuard } from '@nestjs/passport';
-import { AuthenticatedGuard } from './guards/authenticated.guard.js';
+import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { RegisterDto } from './dto/register.dto.js';
 import { User } from '../users/user.entity.js';
 
@@ -29,7 +28,7 @@ export class AuthController {
 
   // ── Register ──────────────────────────────────────────────
   @Post('register')
-  async register(@Body() dto: RegisterDto, @Req() req: Request) {
+  async register(@Body() dto: RegisterDto) {
     const existing = await this.usersService.findByEmail(dto.email);
     if (existing) throw new ConflictException('Email already in use');
 
@@ -39,10 +38,7 @@ export class AuthController {
       dto.fullName,
     );
 
-    await new Promise<void>((resolve, reject) =>
-      req.logIn(user, (err) => (err ? reject(err) : resolve())),
-    );
-    return this.safeUser(user);
+    return { ...this.safeUser(user), ...this.authService.generateToken(user) };
   }
 
   // ── Login (local) ─────────────────────────────────────────
@@ -50,57 +46,38 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   login(@Req() req: Request) {
-    return this.safeUser(req.user as User);
+    const user = req.user as User;
+    return { ...this.safeUser(user), ...this.authService.generateToken(user) };
   }
 
   // ── Google login (mobile) ─────────────────────────────────
   @Post('google')
   @HttpCode(HttpStatus.OK)
-  async googleMobileLogin(
-    @Body('idToken') idToken: string | undefined,
-    @Req() req: Request,
-  ) {
+  async googleMobileLogin(@Body('idToken') idToken: string | undefined) {
     if (!idToken) throw new BadRequestException('Missing Google ID token');
 
     const user = await this.authService.validateGoogleIdToken(idToken);
-    await new Promise<void>((resolve, reject) =>
-      req.logIn(user, (err) => (err ? reject(err) : resolve())),
-    );
-    return this.safeUser(user);
-  }
-
-  // ── Logout ────────────────────────────────────────────────
-  @UseGuards(AuthenticatedGuard)
-  @Post('logout')
-  @HttpCode(HttpStatus.OK)
-  logout(@Req() req: Request, @Res() res: Response) {
-    req.logout(() => {
-      req.session.destroy(() => {
-        res.clearCookie('connect.sid');
-        res.json({ message: 'Logged out' });
-      });
-    });
+    return { ...this.safeUser(user), ...this.authService.generateToken(user) };
   }
 
   // ── Current user ──────────────────────────────────────────
-  @UseGuards(AuthenticatedGuard)
+  @UseGuards(JwtAuthGuard)
   @Get('me')
   me(@Req() req: Request) {
     return this.safeUser(req.user as User);
   }
 
-  // ── Google OAuth ──────────────────────────────────────────
-  @Get('google')
-  @UseGuards(AuthGuard('google'))
-  googleLogin() {
-    // Passport redirects to Google
-  }
-
-  @Get('google/callback')
-  @UseGuards(AuthGuard('google'))
-  googleCallback(@Req() req: Request, @Res() res: Response) {
-    // On success passport has already established the session
-    res.redirect(process.env.FRONTEND_URL ?? 'http://localhost:3001');
+  // ── FCM token registration ────────────────────────────────
+  @UseGuards(JwtAuthGuard)
+  @Patch('fcm-token')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async registerFcmToken(
+    @Req() req: Request,
+    @Body('token') token: string | undefined,
+  ) {
+    if (!token) throw new BadRequestException('Missing token');
+    const user = req.user as User;
+    await this.usersService.updateFcmToken(user.id, token);
   }
 
   private safeUser(user: User) {

@@ -1,28 +1,37 @@
 import 'dart:io';
 import 'dart:typed_data';
-import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
-import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import '../constants/api_constants.dart';
 import '../models/vehicle_model.dart';
 import '../models/document_model.dart';
 import '../models/attachment_model.dart';
 
 class ApiService {
-  ApiService({required CookieJar cookieJar}) {
+  ApiService() {
     _dio = Dio(
       BaseOptions(
         baseUrl: ApiConstants.baseUrl,
         connectTimeout: const Duration(seconds: 10),
         receiveTimeout: const Duration(seconds: 15),
         headers: {'Content-Type': 'application/json'},
-        // Don't throw on 4xx — let callers branch on statusCode instead
         validateStatus: (status) => status != null && status < 500,
       ),
-    )..interceptors.add(CookieManager(cookieJar));
+    )..interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            if (_token != null) {
+              options.headers['Authorization'] = 'Bearer $_token';
+            }
+            handler.next(options);
+          },
+        ),
+      );
   }
 
   late final Dio _dio;
+  String? _token;
+
+  void setToken(String? token) => _token = token;
 
   // ── Auth ─────────────────────────────────────────────────────
 
@@ -61,16 +70,21 @@ class ApiService {
     return res.data as Map<String, dynamic>;
   }
 
-  Future<void> logout() async {
-    await _dio.post(ApiConstants.logout);
-  }
-
   /// Returns the current user, or null if not authenticated (401).
   Future<Map<String, dynamic>?> getMe() async {
     final res = await _dio.get(ApiConstants.me);
     if (res.statusCode == 401) return null;
     _ensureSuccess(res);
     return res.data as Map<String, dynamic>;
+  }
+
+  Future<void> registerFcmToken(String token) async {
+    final res = await _dio.patch(
+      ApiConstants.fcmToken,
+      data: {'token': token},
+    );
+    if (res.statusCode == 401) return; // not yet authenticated — ignore
+    _ensureSuccess(res);
   }
 
   // ── Vehicles ─────────────────────────────────────────────────

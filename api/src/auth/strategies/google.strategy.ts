@@ -7,10 +7,19 @@ import { User } from '../../users/user.entity.js';
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   constructor(private authService: AuthService) {
+    const clientID = process.env.GOOGLE_CLIENT_ID?.trim();
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
+    const callbackURL = process.env.GOOGLE_CALLBACK_URL?.trim();
+
+    if (!clientID || !clientSecret || !callbackURL) {
+      throw new Error('Google OAuth environment variables are not configured');
+    }
+
     super({
-      clientID: process.env.GOOGLE_CLIENT_ID ?? '',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
-      callbackURL: process.env.GOOGLE_CALLBACK_URL ?? '',
+      clientID,
+      clientSecret,
+      callbackURL,
+      passReqToCallback: false,
       scope: ['email', 'profile'],
     });
   }
