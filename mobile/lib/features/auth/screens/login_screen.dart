@@ -34,6 +34,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (success && mounted) context.go('/');
   }
 
+  Future<void> _signInWithGoogle() async {
+    final success = await ref.read(authProvider.notifier).loginWithGoogle();
+    if (success && mounted) context.go('/');
+  }
+
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
@@ -52,17 +57,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const SizedBox(height: 12),
                 Text(
                   'AutoDoc Tracker',
-                  style: Theme.of(context)
-                      .textTheme
-                      .headlineSmall
-                      ?.copyWith(fontWeight: FontWeight.bold),
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 Text(
                   'Track your Romanian vehicle documents',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodyMedium
-                      ?.copyWith(color: cs.onSurfaceVariant),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
                 ),
                 const SizedBox(height: 40),
 
@@ -78,8 +81,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           prefixIcon: Icon(Icons.email_outlined),
                         ),
                         keyboardType: TextInputType.emailAddress,
-                        validator: (v) =>
-                            v != null && v.contains('@') ? null : 'Enter a valid email',
+                        validator: (v) => v != null && v.contains('@')
+                            ? null
+                            : 'Enter a valid email',
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
@@ -88,9 +92,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           labelText: 'Password',
                           prefixIcon: const Icon(Icons.lock_outline_rounded),
                           suffixIcon: IconButton(
-                            icon: Icon(_obscurePass
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined),
+                            icon: Icon(
+                              _obscurePass
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                            ),
                             onPressed: () =>
                                 setState(() => _obscurePass = !_obscurePass),
                           ),
@@ -120,9 +126,41 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 height: 20,
                                 width: 20,
                                 child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.white),
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
                               )
-                            : Text(_isRegisterMode ? 'Create Account' : 'Sign In'),
+                            : Text(
+                                _isRegisterMode ? 'Create Account' : 'Sign In',
+                              ),
+                      ),
+                      const SizedBox(height: 18),
+                      Row(
+                        children: [
+                          const Expanded(child: Divider()),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Text(
+                              'or',
+                              style: TextStyle(color: cs.onSurfaceVariant),
+                            ),
+                          ),
+                          const Expanded(child: Divider()),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: authState.isLoading
+                              ? null
+                              : _signInWithGoogle,
+                          icon: const Text(
+                            'G',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          label: const Text('Continue with Google'),
+                        ),
                       ),
                     ],
                   ),
@@ -133,9 +171,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 TextButton(
                   onPressed: () =>
                       setState(() => _isRegisterMode = !_isRegisterMode),
-                  child: Text(_isRegisterMode
-                      ? 'Already have an account? Sign in'
-                      : "Don't have an account? Register"),
+                  child: Text(
+                    _isRegisterMode
+                        ? 'Already have an account? Sign in'
+                        : "Don't have an account? Register",
+                  ),
                 ),
                 const SizedBox(height: 32),
               ],

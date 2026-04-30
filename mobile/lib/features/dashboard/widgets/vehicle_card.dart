@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/vehicle_model.dart';
 import '../../../core/models/document_model.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../vehicle_detail/providers/vehicle_image_provider.dart';
 
-class VehicleCard extends StatelessWidget {
+class VehicleCard extends ConsumerWidget {
   const VehicleCard({
     super.key,
     required this.vehicle,
@@ -16,7 +18,7 @@ class VehicleCard extends StatelessWidget {
   final VoidCallback onDelete;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final status = vehicle.overallStatus;
     final cs = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
@@ -34,16 +36,22 @@ class VehicleCard extends StatelessWidget {
               // ── Header row ──────────────────────────────────
               Row(
                 children: [
-                  // Status indicator dot
-                  Container(
-                    width: 12,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: status.color,
-                      shape: BoxShape.circle,
+                  // Vehicle thumbnail (if image exists)
+                  if (vehicle.hasImage) ...[
+                    _VehicleThumbnail(vehicleId: vehicle.id),
+                    const SizedBox(width: 12),
+                  ] else ...[
+                    // Status indicator dot (fallback when no photo)
+                    Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: status.color,
+                        shape: BoxShape.circle,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
+                    const SizedBox(width: 10),
+                  ],
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -95,6 +103,46 @@ class VehicleCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _VehicleThumbnail extends ConsumerWidget {
+  const _VehicleThumbnail({required this.vehicleId});
+  final String vehicleId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final imageState = ref.watch(vehicleImageNotifierProvider(vehicleId));
+    final cs = Theme.of(context).colorScheme;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: SizedBox(
+        width: 52,
+        height: 52,
+        child: imageState.when(
+          loading: () => Container(
+            color: cs.surfaceContainerLow,
+            child: const Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          ),
+          error: (_, _) => _iconFallback(cs),
+          data: (bytes) => bytes != null && bytes.isNotEmpty
+              ? Image.memory(bytes, fit: BoxFit.cover)
+              : _iconFallback(cs),
+        ),
+      ),
+    );
+  }
+
+  Widget _iconFallback(ColorScheme cs) => Container(
+        color: cs.surfaceContainerLow,
+        child: Icon(Icons.directions_car_rounded, color: cs.outline, size: 28),
+      );
 }
 
 class _StatusChip extends StatelessWidget {

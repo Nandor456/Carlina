@@ -5,8 +5,12 @@ import '../../../core/models/vehicle_model.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../dashboard/providers/vehicles_provider.dart';
 import '../providers/documents_provider.dart';
+import '../providers/attachments_provider.dart';
 import '../widgets/document_card.dart';
 import '../widgets/add_document_bottom_sheet.dart';
+import '../widgets/vehicle_image_header.dart';
+import '../widgets/attachment_card.dart';
+import '../widgets/add_attachment_bottom_sheet.dart';
 
 class VehicleDetailScreen extends ConsumerWidget {
   const VehicleDetailScreen({super.key, required this.vehicleId});
@@ -17,6 +21,7 @@ class VehicleDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final vehiclesState = ref.watch(vehiclesProvider);
     final docsState = ref.watch(documentsProvider(vehicleId));
+    final attachState = ref.watch(attachmentsProvider(vehicleId));
 
     final vehicle = vehiclesState.vehicles
         .where((v) => v.id == vehicleId)
@@ -38,13 +43,16 @@ class VehicleDetailScreen extends ConsumerWidget {
         ),
       ),
       body: RefreshIndicator(
-        onRefresh: () =>
-            ref.read(documentsProvider(vehicleId).notifier).loadDocuments(),
+        onRefresh: () async {
+          await ref.read(documentsProvider(vehicleId).notifier).loadDocuments();
+          await ref.read(attachmentsProvider(vehicleId).notifier).loadAttachments();
+        },
         child: docsState.isLoading
             ? const Center(child: CircularProgressIndicator())
-            : _DocumentList(
-                vehicleId: vehicleId,
+            : _DetailBody(
+                vehicle: vehicle,
                 documents: docsState.documents,
+                attachState: attachState,
               ),
       ),
     );
@@ -86,7 +94,6 @@ class _VehicleSubtitle extends StatelessWidget {
             ),
           ],
           const Spacer(),
-          // Overall status chip
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
@@ -115,18 +122,215 @@ class _VehicleSubtitle extends StatelessWidget {
   }
 }
 
-// ── Document list ─────────────────────────────────────────────
+// ── Body ──────────────────────────────────────────────────────
 
-class _DocumentList extends ConsumerWidget {
-  const _DocumentList({
-    required this.vehicleId,
+class _DetailBody extends ConsumerWidget {
+  const _DetailBody({
+    required this.vehicle,
     required this.documents,
+    required this.attachState,
   });
 
-  final String vehicleId;
+  final VehicleModel vehicle;
   final List<DocumentModel> documents;
+  final AttachmentsState attachState;
 
-  void _showSheet(
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+
+    return CustomScrollView(
+      slivers: [
+        // ── Vehicle photo header ─────────────────────────────
+        SliverToBoxAdapter(
+          child: VehicleImageHeader(vehicleId: vehicle.id),
+        ),
+
+        // ── Mandatory documents section ──────────────────────
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 16, 8),
+            child: Text(
+              'Mandatory Documents',
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    letterSpacing: 0.5,
+                  ),
+            ),
+          ),
+        ),
+
+        SliverList(
+          delegate: SliverChildBuilderDelegate(
+            (context, i) {
+              final type = DocumentType.values[i];
+              final doc = documents.where((d) => d.documentType == type).firstOrNull;
+              return Dismissible(
+                key: ValueKey('${type.name}-${doc?.id}'),
+                direction: doc != null
+                    ? DismissDirection.endToStart
+                    : DismissDirection.none,
+                background: Container(
+                  alignment: Alignment.centerRight,
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  padding: const EdgeInsets.only(right: 20),
+                  decoration: BoxDecoration(
+                    color: cs.errorContainer,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(Icons.delete_outline_rounded,
+                      color: cs.onErrorContainer),
+                ),
+                confirmDismiss: (_) async {
+                  return await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: Text('Delete ${type.label}?'),
+                      content: const Text(
+                          'This will remove the document record permanently.'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text('Cancel'),
+                        ),
+                        FilledButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          style: FilledButton.styleFrom(
+                              backgroundColor: cs.error),
+                          child: const Text('Delete'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                onDismissed: (_) {
+                  if (doc != null) {
+                    ref
+                        .read(documentsProvider(vehicle.id).notifier)
+                        .deleteDocument(doc.id);
+                  }
+                },
+                child: DocumentCard(
+                  documentType: type,
+                  document: doc,
+                  onTap: () => _showDocSheet(context, type: type, existing: doc),
+                ),
+              );
+            },
+            childCount: DocumentType.values.length,
+          ),
+        ),
+
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+            child: Text(
+              'Swipe left on a document to delete it. Tap to add or edit.',
+              style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+
+        // ── Files & Attachments section ──────────────────────
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 24, 16, 8),
+            child: Row(
+              children: [
+                Text(
+                  'Files & Attachments',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: cs.onSurfaceVariant,
+                        letterSpacing: 0.5,
+                      ),
+                ),
+                const Spacer(),
+                TextButton.icon(
+                  onPressed: () => _showAddAttachment(context),
+                  icon: const Icon(Icons.add_rounded, size: 16),
+                  label: const Text('Add'),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        if (attachState.isLoading)
+          const SliverToBoxAdapter(
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else if (attachState.attachments.isEmpty)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+              child: Text(
+                'No files yet. Tap Add to upload insurance papers, registration, or other documents.',
+                style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          )
+        else
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, i) {
+                final attachment = attachState.attachments[i];
+                return Dismissible(
+                  key: ValueKey(attachment.id),
+                  direction: DismissDirection.endToStart,
+                  background: Container(
+                    alignment: Alignment.centerRight,
+                    margin:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    padding: const EdgeInsets.only(right: 20),
+                    decoration: BoxDecoration(
+                      color: cs.errorContainer,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Icon(Icons.delete_outline_rounded,
+                        color: cs.onErrorContainer),
+                  ),
+                  confirmDismiss: (_) async {
+                    return await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Delete file?'),
+                        content: Text(
+                            'Remove "${attachment.originalFilename}" permanently?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: const Text('Cancel'),
+                          ),
+                          FilledButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            style: FilledButton.styleFrom(
+                                backgroundColor: cs.error),
+                            child: const Text('Delete'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  onDismissed: (_) {
+                    ref
+                        .read(attachmentsProvider(vehicle.id).notifier)
+                        .removeAttachment(attachment.id);
+                  },
+                  child: AttachmentCard(attachment: attachment),
+                );
+              },
+              childCount: attachState.attachments.length,
+            ),
+          ),
+
+        const SliverToBoxAdapter(child: SizedBox(height: 32)),
+      ],
+    );
+  }
+
+  void _showDocSheet(
     BuildContext context, {
     required DocumentType type,
     DocumentModel? existing,
@@ -139,100 +343,22 @@ class _DocumentList extends ConsumerWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (_) => AddDocumentBottomSheet(
-        vehicleId: vehicleId,
+        vehicleId: vehicle.id,
         existingDocument: existing,
         preselectedType: type,
       ),
     );
   }
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final cs = Theme.of(context).colorScheme;
-
-    return ListView(
-      padding: const EdgeInsets.only(top: 12, bottom: 32),
-      children: [
-        // ── Section header ─────────────────────────────────
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 4, 16, 8),
-          child: Text(
-            'Mandatory Documents',
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: cs.onSurfaceVariant,
-                  letterSpacing: 0.5,
-                ),
-          ),
-        ),
-
-        // ── One card per document type ─────────────────────
-        ...DocumentType.values.map((type) {
-          final doc =
-              documents.where((d) => d.documentType == type).firstOrNull;
-
-          return Dismissible(
-            key: ValueKey('${type.name}-${doc?.id}'),
-            direction: doc != null
-                ? DismissDirection.endToStart
-                : DismissDirection.none,
-            background: Container(
-              alignment: Alignment.centerRight,
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              padding: const EdgeInsets.only(right: 20),
-              decoration: BoxDecoration(
-                color: cs.errorContainer,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Icon(Icons.delete_outline_rounded,
-                  color: cs.onErrorContainer),
-            ),
-            confirmDismiss: (_) async {
-              return await showDialog<bool>(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: Text('Delete ${type.label}?'),
-                  content: const Text(
-                      'This will remove the document record permanently.'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, false),
-                      child: const Text('Cancel'),
-                    ),
-                    FilledButton(
-                      onPressed: () => Navigator.pop(ctx, true),
-                      style: FilledButton.styleFrom(
-                          backgroundColor: cs.error),
-                      child: const Text('Delete'),
-                    ),
-                  ],
-                ),
-              );
-            },
-            onDismissed: (_) {
-              if (doc != null) {
-                ref
-                    .read(documentsProvider(vehicleId).notifier)
-                    .deleteDocument(doc.id);
-              }
-            },
-            child: DocumentCard(
-              documentType: type,
-              document: doc,
-              onTap: () => _showSheet(context, type: type, existing: doc),
-            ),
-          );
-        }),
-
-        // ── Help text ──────────────────────────────────────
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-          child: Text(
-            'Swipe left on a document to delete it. Tap to add or edit.',
-            style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
-            textAlign: TextAlign.center,
-          ),
-        ),
-      ],
+  void _showAddAttachment(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => AddAttachmentBottomSheet(vehicleId: vehicle.id),
     );
   }
 }

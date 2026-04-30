@@ -1,28 +1,25 @@
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
+import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import '../constants/api_constants.dart';
 import '../models/vehicle_model.dart';
 import '../models/document_model.dart';
+import '../models/attachment_model.dart';
 
 class ApiService {
-  ApiService() {
+  ApiService({required CookieJar cookieJar}) {
     _dio = Dio(
       BaseOptions(
         baseUrl: ApiConstants.baseUrl,
         connectTimeout: const Duration(seconds: 10),
         receiveTimeout: const Duration(seconds: 15),
         headers: {'Content-Type': 'application/json'},
-        // Session cookie is sent automatically by the browser/WebView;
-        // for native apps we persist and reattach it below.
-        extra: {'withCredentials': true},
+        // Don't throw on 4xx — let callers branch on statusCode instead
+        validateStatus: (status) => status != null && status < 500,
       ),
-    )..interceptors.add(
-        InterceptorsWrapper(
-          onError: (err, handler) {
-            // Surface DioExceptions with a readable message
-            handler.next(err);
-          },
-        ),
-      );
+    )..interceptors.add(CookieManager(cookieJar));
   }
 
   late final Dio _dio;
@@ -37,6 +34,7 @@ class ApiService {
     final body = <String, dynamic>{'email': email, 'password': password};
     if (fullName != null) body['fullName'] = fullName;
     final res = await _dio.post(ApiConstants.register, data: body);
+    _ensureSuccess(res);
     return res.data as Map<String, dynamic>;
   }
 
@@ -48,13 +46,30 @@ class ApiService {
       ApiConstants.login,
       data: {'email': email, 'password': password},
     );
+    _ensureSuccess(res);
     return res.data as Map<String, dynamic>;
   }
 
-  Future<void> logout() => _dio.post(ApiConstants.logout);
+  Future<Map<String, dynamic>> loginWithGoogle({
+    required String idToken,
+  }) async {
+    final res = await _dio.post(
+      ApiConstants.googleLogin,
+      data: {'idToken': idToken},
+    );
+    _ensureSuccess(res);
+    return res.data as Map<String, dynamic>;
+  }
 
-  Future<Map<String, dynamic>> getMe() async {
+  Future<void> logout() async {
+    await _dio.post(ApiConstants.logout);
+  }
+
+  /// Returns the current user, or null if not authenticated (401).
+  Future<Map<String, dynamic>?> getMe() async {
     final res = await _dio.get(ApiConstants.me);
+    if (res.statusCode == 401) return null;
+    _ensureSuccess(res);
     return res.data as Map<String, dynamic>;
   }
 
@@ -62,6 +77,7 @@ class ApiService {
 
   Future<List<VehicleModel>> getVehicles() async {
     final res = await _dio.get(ApiConstants.vehicles);
+    _ensureSuccess(res);
     return (res.data as List)
         .map((e) => VehicleModel.fromJson(e as Map<String, dynamic>))
         .toList();
@@ -69,6 +85,7 @@ class ApiService {
 
   Future<VehicleModel> createVehicle(Map<String, dynamic> data) async {
     final res = await _dio.post(ApiConstants.vehicles, data: data);
+    _ensureSuccess(res);
     return VehicleModel.fromJson(res.data as Map<String, dynamic>);
   }
 
@@ -77,16 +94,20 @@ class ApiService {
     Map<String, dynamic> data,
   ) async {
     final res = await _dio.patch('${ApiConstants.vehicles}/$id', data: data);
+    _ensureSuccess(res);
     return VehicleModel.fromJson(res.data as Map<String, dynamic>);
   }
 
-  Future<void> deleteVehicle(String id) =>
-      _dio.delete('${ApiConstants.vehicles}/$id');
+  Future<void> deleteVehicle(String id) async {
+    final res = await _dio.delete('${ApiConstants.vehicles}/$id');
+    _ensureSuccess(res);
+  }
 
   // ── Documents ────────────────────────────────────────────────
 
   Future<List<DocumentModel>> getDocuments(String vehicleId) async {
     final res = await _dio.get(ApiConstants.documents(vehicleId));
+    _ensureSuccess(res);
     return (res.data as List)
         .map((e) => DocumentModel.fromJson(e as Map<String, dynamic>))
         .toList();
@@ -96,10 +117,8 @@ class ApiService {
     String vehicleId,
     Map<String, dynamic> data,
   ) async {
-    final res = await _dio.post(
-      ApiConstants.documents(vehicleId),
-      data: data,
-    );
+    final res = await _dio.post(ApiConstants.documents(vehicleId), data: data);
+    _ensureSuccess(res);
     return DocumentModel.fromJson(res.data as Map<String, dynamic>);
   }
 
@@ -112,9 +131,114 @@ class ApiService {
       ApiConstants.document(vehicleId, docId),
       data: data,
     );
+    _ensureSuccess(res);
     return DocumentModel.fromJson(res.data as Map<String, dynamic>);
   }
 
-  Future<void> deleteDocument(String vehicleId, String docId) =>
-      _dio.delete(ApiConstants.document(vehicleId, docId));
+  Future<void> deleteDocument(String vehicleId, String docId) async {
+    final res = await _dio.delete(ApiConstants.document(vehicleId, docId));
+    _ensureSuccess(res);
+  }
+
+  // ── Vehicle image ────────────────────────────────────────────
+
+  Future<Map<String, dynamic>> uploadVehicleImage(
+    String vehicleId,
+    File file,
+  ) async {
+    final formData = FormData.fromMap({
+      'image': await MultipartFile.fromFile(file.path),
+    });
+    final res = await _dio.post(
+      ApiConstants.vehicleImage(vehicleId),
+      data: formData,
+    );
+    _ensureSuccess(res);
+    return res.data as Map<String, dynamic>;
+  }
+
+  Future<Uint8List> fetchVehicleImage(String vehicleId) async {
+    final res = await _dio.get<Uint8List>(
+      ApiConstants.vehicleImage(vehicleId),
+      options: Options(responseType: ResponseType.bytes),
+    );
+    if (res.statusCode == 404) return Uint8List(0);
+    _ensureSuccess(res);
+    return res.data ?? Uint8List(0);
+  }
+
+  Future<void> deleteVehicleImage(String vehicleId) async {
+    final res = await _dio.delete(ApiConstants.vehicleImage(vehicleId));
+    _ensureSuccess(res);
+  }
+
+  // ── Attachments ──────────────────────────────────────────────
+
+  Future<List<AttachmentModel>> getAttachments(String vehicleId) async {
+    final res = await _dio.get(ApiConstants.attachments(vehicleId));
+    _ensureSuccess(res);
+    return (res.data as List)
+        .map((e) => AttachmentModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<AttachmentModel> uploadAttachment(
+    String vehicleId, {
+    required File file,
+    required String kind,
+    String? expirationDate,
+    String? notes,
+  }) async {
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(file.path),
+      'kind': kind,
+      if (expirationDate != null) 'expirationDate': expirationDate,
+      if (notes != null && notes.isNotEmpty) 'notes': notes,
+    });
+    final res = await _dio.post(
+      ApiConstants.attachments(vehicleId),
+      data: formData,
+    );
+    _ensureSuccess(res);
+    return AttachmentModel.fromJson(res.data as Map<String, dynamic>);
+  }
+
+  Future<Uint8List> downloadAttachment(
+    String vehicleId,
+    String attachmentId,
+  ) async {
+    final res = await _dio.get<Uint8List>(
+      ApiConstants.attachmentFile(vehicleId, attachmentId),
+      options: Options(responseType: ResponseType.bytes),
+    );
+    _ensureSuccess(res);
+    return res.data ?? Uint8List(0);
+  }
+
+  Future<void> deleteAttachment(String vehicleId, String attachmentId) async {
+    final res = await _dio.delete(
+      ApiConstants.attachment(vehicleId, attachmentId),
+    );
+    _ensureSuccess(res);
+  }
+
+  // ── Helpers ──────────────────────────────────────────────────
+
+  void _ensureSuccess(Response<dynamic> res) {
+    final code = res.statusCode ?? 0;
+    if (code >= 200 && code < 300) return;
+    final body = res.data;
+    final message = body is Map && body['message'] is String
+        ? body['message'] as String
+        : 'Request failed (HTTP $code)';
+    throw ApiException(code, message);
+  }
+}
+
+class ApiException implements Exception {
+  ApiException(this.statusCode, this.message);
+  final int statusCode;
+  final String message;
+  @override
+  String toString() => 'ApiException($statusCode): $message';
 }

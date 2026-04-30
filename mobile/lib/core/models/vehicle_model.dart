@@ -9,6 +9,8 @@ class VehicleModel {
     required this.model,
     this.year,
     this.vin,
+    this.hasImage = false,
+    required this.updatedAt,
     this.documents = const [],
   });
 
@@ -19,6 +21,8 @@ class VehicleModel {
   final String model;
   final int? year;
   final String? vin;
+  final bool hasImage;
+  final DateTime updatedAt;
   final List<DocumentModel> documents;
 
   /// The worst status among all documents (drives the card colour).
@@ -41,6 +45,8 @@ class VehicleModel {
         model: json['model'] as String,
         year: json['year'] as int?,
         vin: json['vin'] as String?,
+        hasImage: json['hasImage'] as bool? ?? false,
+        updatedAt: DateTime.parse(json['updatedAt'] as String),
         documents: (json['documents'] as List<dynamic>? ?? [])
             .map((d) => DocumentModel.fromJson(d as Map<String, dynamic>))
             .toList(),
@@ -62,6 +68,8 @@ class VehicleModel {
     String? model,
     int? year,
     String? vin,
+    bool? hasImage,
+    DateTime? updatedAt,
     List<DocumentModel>? documents,
   }) =>
       VehicleModel(
@@ -72,6 +80,8 @@ class VehicleModel {
         model: model ?? this.model,
         year: year ?? this.year,
         vin: vin ?? this.vin,
+        hasImage: hasImage ?? this.hasImage,
+        updatedAt: updatedAt ?? this.updatedAt,
         documents: documents ?? this.documents,
       );
 }
