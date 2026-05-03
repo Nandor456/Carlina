@@ -9,8 +9,8 @@ export class FirebaseService implements OnModuleInit {
   private messaging: Messaging | null = null;
 
   onModuleInit() {
-    const filePath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
-    const base64 = process.env.FIREBASE_SERVICE_ACCOUNT;
+    const filePath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH?.trim();
+    const base64 = process.env.FIREBASE_SERVICE_ACCOUNT?.trim();
 
     if (!filePath && !base64) {
       this.logger.warn(
@@ -24,6 +24,7 @@ export class FirebaseService implements OnModuleInit {
         ? readFileSync(filePath, 'utf-8')
         : Buffer.from(base64!, 'base64').toString('utf-8');
       const serviceAccount = JSON.parse(json);
+      this.logger.log('Firebase service account loaded successfully');
 
       if (getApps().length === 0) {
         initializeApp({ credential: cert(serviceAccount) });
