@@ -59,7 +59,10 @@ export class Vehicle {
   /** Strip internal file-system path; expose only the boolean for the client. */
   toJSON() {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { imagePath, imageMimeType, ...rest } = this as Record<string, unknown>;
+    const { imagePath, imageMimeType, ...rest } = this as Record<
+      string,
+      unknown
+    >;
     return { ...rest, hasImage: this.imagePath !== null };
   }
 }

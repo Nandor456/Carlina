@@ -97,7 +97,10 @@ export class VehiclesController {
 
   @Delete(':id/image')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async deleteImage(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
+  async deleteImage(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: Request,
+  ) {
     await this.vehiclesService.clearImage(id, (req.user as User).id);
   }
 }

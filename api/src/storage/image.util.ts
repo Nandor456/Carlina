@@ -25,7 +25,9 @@ export function detectImageMime(buffer: Buffer): string | null {
         const webp = [0x57, 0x45, 0x42, 0x50];
         if (!webp.every((b, i) => buffer[8 + i] === b)) continue;
       }
-      const match = MAGIC.find((m) => m.bytes === bytes && (m.offset ?? 0) === offset);
+      const match = MAGIC.find(
+        (m) => m.bytes === bytes && (m.offset ?? 0) === offset,
+      );
       return match?.mime ?? null;
     }
   }
@@ -42,7 +44,12 @@ export async function processVehicleImage(
 ): Promise<{ buffer: Buffer; mimeType: string; ext: string }> {
   const processed = await sharp(buffer)
     .rotate()
-    .resize({ width: 1280, height: 1280, fit: 'inside', withoutEnlargement: true })
+    .resize({
+      width: 1280,
+      height: 1280,
+      fit: 'inside',
+      withoutEnlargement: true,
+    })
     .webp({ quality: 80 })
     .toBuffer();
 

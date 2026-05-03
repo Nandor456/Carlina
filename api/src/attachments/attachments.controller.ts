@@ -36,14 +36,14 @@ export class AttachmentsController {
     @Param('vehicleId', ParseUUIDPipe) vehicleId: string,
     @Req() req: Request,
   ) {
-    return this.attachmentsService.findAllForVehicle(vehicleId, (req.user as User).id);
+    return this.attachmentsService.findAllForVehicle(
+      vehicleId,
+      (req.user as User).id,
+    );
   }
 
   @Get(':id')
-  findOne(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Req() req: Request,
-  ) {
+  findOne(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
     return this.attachmentsService.findOne(id, (req.user as User).id);
   }
 

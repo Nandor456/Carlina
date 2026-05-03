@@ -44,4 +44,4 @@ import { HealthModule } from './health/health.module.js';
     HealthModule,
   ],
 })
-export class AppModule { }
+export class AppModule {}

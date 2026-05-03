@@ -5,7 +5,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThanOrEqual, MoreThan, Between } from 'typeorm';
+import { Repository, LessThanOrEqual, Between } from 'typeorm';
 import { Document, DocumentStatus, DocumentType } from './document.entity.js';
 import { CreateDocumentDto } from './dto/create-document.dto.js';
 import { UpdateDocumentDto } from './dto/update-document.dto.js';
@@ -21,7 +21,10 @@ export class DocumentsService {
 
   // ── CRUD ────────────────────────────────────────────────────
 
-  async findAllForVehicle(vehicleId: string, userId: string): Promise<Document[]> {
+  async findAllForVehicle(
+    vehicleId: string,
+    userId: string,
+  ): Promise<Document[]> {
     // Ownership check via VehiclesService
     await this.vehiclesService.findOne(vehicleId, userId);
     return this.docsRepo.find({
@@ -95,7 +98,9 @@ export class DocumentsService {
     expiry.setHours(0, 0, 0, 0);
 
     const msPerDay = 1000 * 60 * 60 * 24;
-    const daysLeft = Math.floor((expiry.getTime() - today.getTime()) / msPerDay);
+    const daysLeft = Math.floor(
+      (expiry.getTime() - today.getTime()) / msPerDay,
+    );
 
     if (daysLeft < 0) return DocumentStatus.EXPIRED;
     if (daysLeft <= 30) return DocumentStatus.EXPIRING_SOON;

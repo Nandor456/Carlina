@@ -13,7 +13,11 @@ import { Vehicle } from './vehicle.entity.js';
 import { CreateVehicleDto } from './dto/create-vehicle.dto.js';
 import { UpdateVehicleDto } from './dto/update-vehicle.dto.js';
 import { LocalStorageService } from '../storage/local-storage.service.js';
-import { processVehicleImage, detectImageMime, isAllowedImageMime } from '../storage/image.util.js';
+import {
+  processVehicleImage,
+  detectImageMime,
+  isAllowedImageMime,
+} from '../storage/image.util.js';
 
 @Injectable()
 export class VehiclesService {
@@ -62,7 +66,9 @@ export class VehiclesService {
     const vehicle = await this.findOne(id, userId);
     if (vehicle.imagePath) {
       await this.storage.delete(vehicle.imagePath).catch((err: unknown) => {
-        this.logger.warn(`Could not delete image ${vehicle.imagePath}: ${String(err)}`);
+        this.logger.warn(
+          `Could not delete image ${vehicle.imagePath}: ${String(err)}`,
+        );
       });
     }
     await this.vehiclesRepo.remove(vehicle);
@@ -78,13 +84,23 @@ export class VehiclesService {
       );
     }
 
-    const { buffer: processed, mimeType, ext } = await processVehicleImage(buffer);
+    const {
+      buffer: processed,
+      mimeType,
+      ext,
+    } = await processVehicleImage(buffer);
     const filename = `${id}-${crypto.randomUUID()}.${ext}`;
-    const storedPath = await this.storage.saveBuffer('vehicles', filename, processed);
+    const storedPath = await this.storage.saveBuffer(
+      'vehicles',
+      filename,
+      processed,
+    );
 
     if (vehicle.imagePath) {
       await this.storage.delete(vehicle.imagePath).catch((err: unknown) => {
-        this.logger.warn(`Could not delete old image ${vehicle.imagePath}: ${String(err)}`);
+        this.logger.warn(
+          `Could not delete old image ${vehicle.imagePath}: ${String(err)}`,
+        );
       });
     }
 
@@ -97,7 +113,9 @@ export class VehiclesService {
     const vehicle = await this.findOne(id, userId);
     if (vehicle.imagePath) {
       await this.storage.delete(vehicle.imagePath).catch((err: unknown) => {
-        this.logger.warn(`Could not delete image ${vehicle.imagePath}: ${String(err)}`);
+        this.logger.warn(
+          `Could not delete image ${vehicle.imagePath}: ${String(err)}`,
+        );
       });
       vehicle.imagePath = null;
       vehicle.imageMimeType = null;
@@ -108,7 +126,8 @@ export class VehiclesService {
 
   async streamImage(id: string, userId: string, res: Response): Promise<void> {
     const vehicle = await this.findOne(id, userId);
-    if (!vehicle.imagePath) throw new NotFoundException('No image for this vehicle');
+    if (!vehicle.imagePath)
+      throw new NotFoundException('No image for this vehicle');
     res.setHeader('Content-Type', vehicle.imageMimeType ?? 'image/webp');
     res.setHeader('Cache-Control', 'private, max-age=86400');
     this.storage.streamFile(vehicle.imagePath, res);

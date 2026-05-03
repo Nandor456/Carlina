@@ -62,7 +62,10 @@ export class AttachmentsService {
     private readonly storage: LocalStorageService,
   ) {}
 
-  async findAllForVehicle(vehicleId: string, userId: string): Promise<Attachment[]> {
+  async findAllForVehicle(
+    vehicleId: string,
+    userId: string,
+  ): Promise<Attachment[]> {
     await this.vehiclesService.findOne(vehicleId, userId);
     return this.repo.find({
       where: { vehicleId },
@@ -129,7 +132,13 @@ export class AttachmentsService {
     });
 
     const saved = await this.repo.save(attachment);
-    const { storedPath: _sp, vehicle: _v, ...safe } = saved as Attachment & { vehicle?: unknown };
+    const {
+      storedPath: _sp,
+      vehicle: _v,
+      ...safe
+    } = saved as Attachment & { vehicle?: unknown };
+    void _sp;
+    void _v;
     return safe;
   }
 
@@ -143,10 +152,15 @@ export class AttachmentsService {
     this.storage.streamFile(attachment.storedPath, res);
   }
 
-  async update(id: string, userId: string, dto: UpdateAttachmentDto): Promise<Attachment> {
+  async update(
+    id: string,
+    userId: string,
+    dto: UpdateAttachmentDto,
+  ): Promise<Attachment> {
     const attachment = await this.findOne(id, userId);
     if (dto.kind !== undefined) attachment.kind = dto.kind;
-    if (dto.expirationDate !== undefined) attachment.expirationDate = dto.expirationDate;
+    if (dto.expirationDate !== undefined)
+      attachment.expirationDate = dto.expirationDate;
     if (dto.notes !== undefined) attachment.notes = dto.notes;
     return this.repo.save(attachment);
   }
@@ -161,6 +175,11 @@ export class AttachmentsService {
   }
 
   private sanitizeFilename(name: string): string {
-    return path.basename(name).replace(/[^\w.\-]/g, '_').slice(0, 255) || 'file';
+    return (
+      path
+        .basename(name)
+        .replace(/[^\w.-]/g, '_')
+        .slice(0, 255) || 'file'
+    );
   }
 }

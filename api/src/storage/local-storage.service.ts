@@ -13,7 +13,11 @@ export class LocalStorageService {
   }
 
   /** Save `buffer` as `<subdir>/<filename>` under the storage root. */
-  async saveBuffer(subdir: string, filename: string, buffer: Buffer): Promise<string> {
+  async saveBuffer(
+    subdir: string,
+    filename: string,
+    buffer: Buffer,
+  ): Promise<string> {
     const dir = path.join(this.root, subdir);
     fs.mkdirSync(dir, { recursive: true });
     const relativePath = path.join(subdir, filename);
