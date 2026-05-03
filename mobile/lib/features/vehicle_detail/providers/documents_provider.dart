@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/document_model.dart';
 import '../../../core/network/api_service.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../dashboard/providers/vehicles_provider.dart';
 
 class DocumentsState {
   const DocumentsState({
@@ -28,13 +29,14 @@ class DocumentsState {
 }
 
 class DocumentsNotifier extends StateNotifier<DocumentsState> {
-  DocumentsNotifier(this._api, this._vehicleId)
+  DocumentsNotifier(this._api, this._vehicleId, this._ref)
       : super(const DocumentsState()) {
     loadDocuments();
   }
 
   final ApiService _api;
   final String _vehicleId;
+  final Ref _ref;
 
   Future<void> loadDocuments() async {
     try {
@@ -61,6 +63,7 @@ class DocumentsNotifier extends StateNotifier<DocumentsState> {
         'expirationDate': expirationDate.toIso8601String().split('T').first,
       });
       state = state.copyWith(documents: [...state.documents, doc]);
+      _ref.read(vehiclesProvider.notifier).loadVehicles();
       return true;
     } catch (e) {
       state = state.copyWith(error: 'Failed to save document');
@@ -83,6 +86,7 @@ class DocumentsNotifier extends StateNotifier<DocumentsState> {
             .map((d) => d.id == docId ? updated : d)
             .toList(),
       );
+      _ref.read(vehiclesProvider.notifier).loadVehicles();
       return true;
     } catch (e) {
       state = state.copyWith(error: 'Failed to update document');
@@ -96,6 +100,7 @@ class DocumentsNotifier extends StateNotifier<DocumentsState> {
       state = state.copyWith(
         documents: state.documents.where((d) => d.id != docId).toList(),
       );
+      _ref.read(vehiclesProvider.notifier).loadVehicles();
     } catch (e) {
       state = state.copyWith(error: 'Failed to delete document');
     }
@@ -106,5 +111,5 @@ class DocumentsNotifier extends StateNotifier<DocumentsState> {
 final documentsProvider = StateNotifierProviderFamily<DocumentsNotifier,
     DocumentsState, String>(
   (ref, vehicleId) =>
-      DocumentsNotifier(ref.read(apiServiceProvider), vehicleId),
+      DocumentsNotifier(ref.read(apiServiceProvider), vehicleId, ref),
 );

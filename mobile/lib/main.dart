@@ -12,6 +12,7 @@ import 'features/auth/providers/auth_provider.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/dashboard/screens/dashboard_screen.dart';
 import 'features/vehicle_detail/screens/vehicle_detail_screen.dart';
+import 'features/family/screens/family_member_vehicles_screen.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseBackgroundHandler(RemoteMessage _) async {}
@@ -98,6 +99,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/vehicle/:id',
         builder: (_, state) =>
             VehicleDetailScreen(vehicleId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/family/:memberId',
+        builder: (_, state) => FamilyMemberVehiclesScreen(
+          memberId: state.pathParameters['memberId']!,
+          memberName: state.extra as String? ?? 'Family Member',
+        ),
       ),
     ],
   );

@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../providers/vehicles_provider.dart';
 import '../widgets/vehicle_card.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../family/providers/family_provider.dart';
+import '../../family/screens/family_screen.dart';
 import '../_add_vehicle_bottom_sheet.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -13,13 +15,34 @@ class DashboardScreen extends ConsumerStatefulWidget {
   ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+class _DashboardScreenState extends ConsumerState<DashboardScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_onTabChanged);
     Future.microtask(
       () => ref.read(vehiclesProvider.notifier).loadVehicles(),
     );
+  }
+
+  void _onTabChanged() {
+    if (_tabController.indexIsChanging) return;
+    setState(() {});
+    // Refresh family data each time the Family tab becomes active.
+    if (_tabController.index == 1) {
+      // ignore: discarded_futures
+      ref.read(familyProvider.notifier).load();
+    }
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   Future<void> _confirmDelete(String vehicleId, String name) async {
@@ -50,13 +73,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(vehiclesProvider);
     final auth = ref.watch(authProvider);
-    final cs = Theme.of(context).colorScheme;
+    final isOnMyCars = _tabController.index == 0;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Garage'),
+        title: const Text('Carlina'),
         actions: [
           if (auth.user != null)
             Padding(
@@ -64,33 +86,67 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               child: IconButton(
                 icon: const Icon(Icons.logout_rounded),
                 tooltip: 'Sign out',
-                onPressed: () =>
-                    ref.read(authProvider.notifier).logout(),
+                onPressed: () => ref.read(authProvider.notifier).logout(),
               ),
             ),
         ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: () => ref.read(vehiclesProvider.notifier).loadVehicles(),
-        child: _buildBody(state, cs),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          useSafeArea: true,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          builder: (_) => const AddVehicleBottomSheet(),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(icon: Icon(Icons.directions_car_rounded), text: 'My Cars'),
+            Tab(icon: Icon(Icons.group_rounded), text: 'Family'),
+          ],
         ),
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Add Vehicle'),
       ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _MyCarsTab(onDelete: _confirmDelete),
+          const FamilyScreen(),
+        ],
+      ),
+      floatingActionButton: isOnMyCars
+          ? FloatingActionButton.extended(
+              onPressed: () => showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                useSafeArea: true,
+                shape: const RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                builder: (_) => const AddVehicleBottomSheet(),
+              ),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Add Vehicle'),
+            )
+          : null,
+    );
+  }
+}
+
+class _MyCarsTab extends ConsumerWidget {
+  const _MyCarsTab({required this.onDelete});
+
+  final Future<void> Function(String vehicleId, String name) onDelete;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(vehiclesProvider);
+    final cs = Theme.of(context).colorScheme;
+
+    return RefreshIndicator(
+      onRefresh: () => ref.read(vehiclesProvider.notifier).loadVehicles(),
+      child: _buildBody(context, ref, state, cs),
     );
   }
 
-  Widget _buildBody(VehiclesState state, ColorScheme cs) {
+  Widget _buildBody(
+    BuildContext context,
+    WidgetRef ref,
+    VehiclesState state,
+    ColorScheme cs,
+  ) {
     if (state.isLoading && state.vehicles.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -140,7 +196,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         return VehicleCard(
           vehicle: v,
           onTap: () => context.push('/vehicle/${v.id}'),
-          onDelete: () => _confirmDelete(v.id, '${v.make} ${v.model}'),
+          onDelete: () => onDelete(v.id, '${v.make} ${v.model}'),
         );
       },
     );

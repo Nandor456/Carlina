@@ -5,7 +5,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThanOrEqual, Between } from 'typeorm';
+import { Repository, Between } from 'typeorm';
 import { Document, DocumentStatus, DocumentType } from './document.entity.js';
 import { CreateDocumentDto } from './dto/create-document.dto.js';
 import { UpdateDocumentDto } from './dto/update-document.dto.js';
@@ -17,7 +17,7 @@ export class DocumentsService {
     @InjectRepository(Document)
     private readonly docsRepo: Repository<Document>,
     private readonly vehiclesService: VehiclesService,
-  ) {}
+  ) { }
 
   // ── CRUD ────────────────────────────────────────────────────
 
@@ -138,32 +138,6 @@ export class DocumentsService {
         expirationDate: Between(
           dayStart.toISOString().split('T')[0],
           dayEnd.toISOString().split('T')[0],
-        ) as unknown as string,
-      },
-      relations: ['vehicle', 'vehicle.user'],
-    });
-  }
-
-  /** Returns all documents that are already expired (used for bulk queries). */
-  findExpired(): Promise<Document[]> {
-    const today = new Date().toISOString().split('T')[0];
-    return this.docsRepo.find({
-      where: { expirationDate: LessThanOrEqual(today) as unknown as string },
-      relations: ['vehicle', 'vehicle.user'],
-    });
-  }
-
-  /** Returns all documents expiring within the next `days` days. */
-  findExpiringSoon(days: number): Promise<Document[]> {
-    const today = new Date();
-    const future = new Date();
-    future.setDate(today.getDate() + days);
-
-    return this.docsRepo.find({
-      where: {
-        expirationDate: Between(
-          today.toISOString().split('T')[0],
-          future.toISOString().split('T')[0],
         ) as unknown as string,
       },
       relations: ['vehicle', 'vehicle.user'],

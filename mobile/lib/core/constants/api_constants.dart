@@ -36,4 +36,17 @@ abstract class ApiConstants {
       '/vehicles/$vehicleId/attachments/$attachmentId';
   static String attachmentFile(String vehicleId, String attachmentId) =>
       '/vehicles/$vehicleId/attachments/$attachmentId/file';
+
+  // Family
+  static const String familyInvite = '/family/invite';
+  static const String familyMembers = '/family/members';
+  static const String familyInvitesReceived = '/family/invites/received';
+  static const String familyInvitesSent = '/family/invites/sent';
+  static String familyInviteAccept(String linkId) =>
+      '/family/invites/$linkId/accept';
+  static String familyInviteDecline(String linkId) =>
+      '/family/invites/$linkId/decline';
+  static String familyMember(String linkId) => '/family/members/$linkId';
+  static String familyMemberVehicles(String memberId) =>
+      '/family/members/$memberId/vehicles';
 }

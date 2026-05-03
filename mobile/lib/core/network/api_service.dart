@@ -5,6 +5,7 @@ import '../constants/api_constants.dart';
 import '../models/vehicle_model.dart';
 import '../models/document_model.dart';
 import '../models/attachment_model.dart';
+import '../models/family_member_model.dart';
 
 class ApiService {
   ApiService() {
@@ -234,6 +235,60 @@ class ApiService {
       ApiConstants.attachment(vehicleId, attachmentId),
     );
     _ensureSuccess(res);
+  }
+
+  // ── Family ───────────────────────────────────────────────────
+
+  Future<void> sendFamilyInvite(String email) async {
+    final res = await _dio.post(ApiConstants.familyInvite, data: {'email': email});
+    _ensureSuccess(res);
+  }
+
+  Future<List<FamilyMemberModel>> getFamilyMembers() async {
+    final res = await _dio.get(ApiConstants.familyMembers);
+    _ensureSuccess(res);
+    return (res.data as List)
+        .map((e) => FamilyMemberModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<FamilyMemberModel>> getReceivedInvites() async {
+    final res = await _dio.get(ApiConstants.familyInvitesReceived);
+    _ensureSuccess(res);
+    return (res.data as List)
+        .map((e) => FamilyMemberModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<FamilyMemberModel>> getSentInvites() async {
+    final res = await _dio.get(ApiConstants.familyInvitesSent);
+    _ensureSuccess(res);
+    return (res.data as List)
+        .map((e) => FamilyMemberModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<void> acceptFamilyInvite(String linkId) async {
+    final res = await _dio.post(ApiConstants.familyInviteAccept(linkId));
+    _ensureSuccess(res);
+  }
+
+  Future<void> declineFamilyInvite(String linkId) async {
+    final res = await _dio.post(ApiConstants.familyInviteDecline(linkId));
+    _ensureSuccess(res);
+  }
+
+  Future<void> removeFamilyMember(String linkId) async {
+    final res = await _dio.delete(ApiConstants.familyMember(linkId));
+    _ensureSuccess(res);
+  }
+
+  Future<List<VehicleModel>> getFamilyMemberVehicles(String memberId) async {
+    final res = await _dio.get(ApiConstants.familyMemberVehicles(memberId));
+    _ensureSuccess(res);
+    return (res.data as List)
+        .map((e) => VehicleModel.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   // ── Helpers ──────────────────────────────────────────────────

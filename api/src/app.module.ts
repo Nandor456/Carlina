@@ -12,6 +12,7 @@ import { DocumentsModule } from './documents/documents.module.js';
 import { AttachmentsModule } from './attachments/attachments.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
 import { HealthModule } from './health/health.module.js';
+import { FamilyModule } from './family/family.module.js';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { HealthModule } from './health/health.module.js';
     AttachmentsModule,
     NotificationsModule,
     HealthModule,
+    FamilyModule,
   ],
 })
 export class AppModule {}
