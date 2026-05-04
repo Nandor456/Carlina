@@ -1,8 +1,19 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 abstract class ApiConstants {
-  static String get baseUrl =>
-      dotenv.env['API_BASE_URL'] ?? 'http://localhost:3000/api';
+  static String get baseUrl {
+    final url = dotenv.env['API_BASE_URL'];
+    if (url == null || url.isEmpty) {
+      if (kReleaseMode) {
+        throw StateError(
+          'API_BASE_URL is not set. Provide it via the bundled .env file.',
+        );
+      }
+      return 'http://localhost:3000/api';
+    }
+    return url;
+  }
 
   // Google Sign-In client IDs loaded from mobile/.env.
   static String get googleWebClientId =>

@@ -11,8 +11,18 @@ async function bootstrap() {
   app.useGlobalInterceptors(new LoggingInterceptor());
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
+  const isProd = process.env.NODE_ENV === 'production';
+  const allowedOrigins = (process.env.FRONTEND_URL ?? '')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+
   app.enableCors({
-    origin: true,
+    origin: isProd
+      ? allowedOrigins.length > 0
+        ? allowedOrigins
+        : false
+      : true,
     credentials: true,
   });
 

@@ -1,0 +1,11 @@
+node_modules
+dist
+coverage
+.env
+.env.*
+!.env.example
+uploads
+*firebase-adminsdk*.json
+.git
+.gitignore
+README.md

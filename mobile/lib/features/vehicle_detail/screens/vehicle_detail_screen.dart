@@ -22,6 +22,13 @@ class VehicleDetailScreen extends ConsumerWidget {
     final vehiclesState = ref.watch(vehiclesProvider);
     final docsState = ref.watch(documentsProvider(vehicleId));
     final attachState = ref.watch(attachmentsProvider(vehicleId));
+    final cs = Theme.of(context).colorScheme;
+    final appBarTitleStyle = Theme.of(context).textTheme.titleLarge?.copyWith(
+      color: cs.onSurface,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.3,
+    );
+    final appBarIconTheme = IconThemeData(color: cs.onSurface);
 
     final vehicle = vehiclesState.vehicles
         .where((v) => v.id == vehicleId)
@@ -29,13 +36,25 @@ class VehicleDetailScreen extends ConsumerWidget {
 
     if (vehicle == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Vehicle')),
+        appBar: AppBar(
+          foregroundColor: cs.onSurface,
+          backgroundColor: cs.surface,
+          titleTextStyle: appBarTitleStyle,
+          iconTheme: appBarIconTheme,
+          actionsIconTheme: appBarIconTheme,
+          title: const Text('Vehicle'),
+        ),
         body: const Center(child: Text('Vehicle not found')),
       );
     }
 
     return Scaffold(
       appBar: AppBar(
+        foregroundColor: cs.onSurface,
+        backgroundColor: cs.surface,
+        titleTextStyle: appBarTitleStyle,
+        iconTheme: appBarIconTheme,
+        actionsIconTheme: appBarIconTheme,
         title: Text('${vehicle.make} ${vehicle.model}'),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(48),
@@ -45,7 +64,9 @@ class VehicleDetailScreen extends ConsumerWidget {
       body: RefreshIndicator(
         onRefresh: () async {
           await ref.read(documentsProvider(vehicleId).notifier).loadDocuments();
-          await ref.read(attachmentsProvider(vehicleId).notifier).loadAttachments();
+          await ref
+              .read(attachmentsProvider(vehicleId).notifier)
+              .loadAttachments();
         },
         child: docsState.isLoading
             ? const Center(child: CircularProgressIndicator())
@@ -142,9 +163,7 @@ class _DetailBody extends ConsumerWidget {
     return CustomScrollView(
       slivers: [
         // ── Vehicle photo header ─────────────────────────────
-        SliverToBoxAdapter(
-          child: VehicleImageHeader(vehicleId: vehicle.id),
-        ),
+        SliverToBoxAdapter(child: VehicleImageHeader(vehicleId: vehicle.id)),
 
         // ── Mandatory documents section ──────────────────────
         SliverToBoxAdapter(
@@ -153,72 +172,75 @@ class _DetailBody extends ConsumerWidget {
             child: Text(
               'Mandatory Documents',
               style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: cs.onSurfaceVariant,
-                    letterSpacing: 0.5,
-                  ),
+                color: cs.onSurfaceVariant,
+                letterSpacing: 0.5,
+              ),
             ),
           ),
         ),
 
         SliverList(
-          delegate: SliverChildBuilderDelegate(
-            (context, i) {
-              final type = DocumentType.values[i];
-              final doc = documents.where((d) => d.documentType == type).firstOrNull;
-              return Dismissible(
-                key: ValueKey('${type.name}-${doc?.id}'),
-                direction: doc != null
-                    ? DismissDirection.endToStart
-                    : DismissDirection.none,
-                background: Container(
-                  alignment: Alignment.centerRight,
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                  padding: const EdgeInsets.only(right: 20),
-                  decoration: BoxDecoration(
-                    color: cs.errorContainer,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Icon(Icons.delete_outline_rounded,
-                      color: cs.onErrorContainer),
+          delegate: SliverChildBuilderDelegate((context, i) {
+            final type = DocumentType.values[i];
+            final doc = documents
+                .where((d) => d.documentType == type)
+                .firstOrNull;
+            return Dismissible(
+              key: ValueKey('${type.name}-${doc?.id}'),
+              direction: doc != null
+                  ? DismissDirection.endToStart
+                  : DismissDirection.none,
+              background: Container(
+                alignment: Alignment.centerRight,
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                padding: const EdgeInsets.only(right: 20),
+                decoration: BoxDecoration(
+                  color: cs.errorContainer,
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                confirmDismiss: (_) async {
-                  return await showDialog<bool>(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      title: Text('Delete ${type.label}?'),
-                      content: const Text(
-                          'This will remove the document record permanently.'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx, false),
-                          child: const Text('Cancel'),
-                        ),
-                        FilledButton(
-                          onPressed: () => Navigator.pop(ctx, true),
-                          style: FilledButton.styleFrom(
-                              backgroundColor: cs.error),
-                          child: const Text('Delete'),
-                        ),
-                      ],
+                child: Icon(
+                  Icons.delete_outline_rounded,
+                  color: cs.onErrorContainer,
+                ),
+              ),
+              confirmDismiss: (_) async {
+                return await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: Text('Delete ${type.label}?'),
+                    content: const Text(
+                      'This will remove the document record permanently.',
                     ),
-                  );
-                },
-                onDismissed: (_) {
-                  if (doc != null) {
-                    ref
-                        .read(documentsProvider(vehicle.id).notifier)
-                        .deleteDocument(doc.id);
-                  }
-                },
-                child: DocumentCard(
-                  documentType: type,
-                  document: doc,
-                  onTap: () => _showDocSheet(context, type: type, existing: doc),
-                ),
-              );
-            },
-            childCount: DocumentType.values.length,
-          ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: const Text('Cancel'),
+                      ),
+                      FilledButton(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: cs.error,
+                        ),
+                        child: const Text('Delete'),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              onDismissed: (_) {
+                if (doc != null) {
+                  ref
+                      .read(documentsProvider(vehicle.id).notifier)
+                      .deleteDocument(doc.id);
+                }
+              },
+              child: DocumentCard(
+                documentType: type,
+                document: doc,
+                onTap: () => _showDocSheet(context, type: type, existing: doc),
+              ),
+            );
+          }, childCount: DocumentType.values.length),
         ),
 
         SliverToBoxAdapter(
@@ -241,9 +263,9 @@ class _DetailBody extends ConsumerWidget {
                 Text(
                   'Files & Attachments',
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: cs.onSurfaceVariant,
-                        letterSpacing: 0.5,
-                      ),
+                    color: cs.onSurfaceVariant,
+                    letterSpacing: 0.5,
+                  ),
                 ),
                 const Spacer(),
                 TextButton.icon(
@@ -273,56 +295,59 @@ class _DetailBody extends ConsumerWidget {
           )
         else
           SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, i) {
-                final attachment = attachState.attachments[i];
-                return Dismissible(
-                  key: ValueKey(attachment.id),
-                  direction: DismissDirection.endToStart,
-                  background: Container(
-                    alignment: Alignment.centerRight,
-                    margin:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    padding: const EdgeInsets.only(right: 20),
-                    decoration: BoxDecoration(
-                      color: cs.errorContainer,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Icon(Icons.delete_outline_rounded,
-                        color: cs.onErrorContainer),
+            delegate: SliverChildBuilderDelegate((context, i) {
+              final attachment = attachState.attachments[i];
+              return Dismissible(
+                key: ValueKey(attachment.id),
+                direction: DismissDirection.endToStart,
+                background: Container(
+                  alignment: Alignment.centerRight,
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 6,
                   ),
-                  confirmDismiss: (_) async {
-                    return await showDialog<bool>(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Delete file?'),
-                        content: Text(
-                            'Remove "${attachment.originalFilename}" permanently?'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx, false),
-                            child: const Text('Cancel'),
-                          ),
-                          FilledButton(
-                            onPressed: () => Navigator.pop(ctx, true),
-                            style: FilledButton.styleFrom(
-                                backgroundColor: cs.error),
-                            child: const Text('Delete'),
-                          ),
-                        ],
+                  padding: const EdgeInsets.only(right: 20),
+                  decoration: BoxDecoration(
+                    color: cs.errorContainer,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(
+                    Icons.delete_outline_rounded,
+                    color: cs.onErrorContainer,
+                  ),
+                ),
+                confirmDismiss: (_) async {
+                  return await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Delete file?'),
+                      content: Text(
+                        'Remove "${attachment.originalFilename}" permanently?',
                       ),
-                    );
-                  },
-                  onDismissed: (_) {
-                    ref
-                        .read(attachmentsProvider(vehicle.id).notifier)
-                        .removeAttachment(attachment.id);
-                  },
-                  child: AttachmentCard(attachment: attachment),
-                );
-              },
-              childCount: attachState.attachments.length,
-            ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text('Cancel'),
+                        ),
+                        FilledButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: cs.error,
+                          ),
+                          child: const Text('Delete'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                onDismissed: (_) {
+                  ref
+                      .read(attachmentsProvider(vehicle.id).notifier)
+                      .removeAttachment(attachment.id);
+                },
+                child: AttachmentCard(attachment: attachment),
+              );
+            }, childCount: attachState.attachments.length),
           ),
 
         const SliverToBoxAdapter(child: SizedBox(height: 32)),

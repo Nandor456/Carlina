@@ -38,9 +38,20 @@ class _FamilyMemberVehiclesScreenState
   Widget build(BuildContext context) {
     final state = ref.watch(familyVehiclesProvider(widget.memberId));
     final cs = Theme.of(context).colorScheme;
+    final appBarTitleStyle = Theme.of(context).textTheme.titleLarge?.copyWith(
+      color: cs.onSurface,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.3,
+    );
+    final appBarIconTheme = IconThemeData(color: cs.onSurface);
 
     return Scaffold(
       appBar: AppBar(
+        foregroundColor: cs.onSurface,
+        backgroundColor: cs.surface,
+        titleTextStyle: appBarTitleStyle,
+        iconTheme: appBarIconTheme,
+        actionsIconTheme: appBarIconTheme,
         title: Text("${widget.memberName}'s Cars"),
       ),
       body: RefreshIndicator(
@@ -82,10 +93,7 @@ class _FamilyMemberVehiclesScreenState
           children: [
             Icon(Icons.directions_car_outlined, size: 72, color: cs.outline),
             const SizedBox(height: 16),
-            Text(
-              'No vehicles',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
+            Text('No vehicles', style: Theme.of(context).textTheme.titleMedium),
           ],
         ),
       );
@@ -120,10 +128,7 @@ class _FamilyMemberVehiclesScreenState
 // ── Read-only vehicle card ────────────────────────────────────────────────────
 
 class _ReadOnlyVehicleCard extends StatelessWidget {
-  const _ReadOnlyVehicleCard({
-    required this.vehicle,
-    required this.onTap,
-  });
+  const _ReadOnlyVehicleCard({required this.vehicle, required this.onTap});
 
   final VehicleModel vehicle;
   final VoidCallback onTap;
@@ -161,8 +166,9 @@ class _ReadOnlyVehicleCard extends StatelessWidget {
                       children: [
                         Text(
                           '${vehicle.make} ${vehicle.model}',
-                          style: textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.bold),
+                          style: textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         Text(
                           vehicle.licensePlate,
@@ -253,7 +259,10 @@ class _DocStatusItem extends StatelessWidget {
         Text(
           type.label,
           style: TextStyle(
-              fontSize: 11, color: color, fontWeight: FontWeight.w500),
+            fontSize: 11,
+            color: color,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ],
     );
@@ -296,26 +305,27 @@ class _VehicleDetailSheet extends StatelessWidget {
           // Title
           Text(
             '${vehicle.make} ${vehicle.model}',
-            style: textTheme.headlineSmall
-                ?.copyWith(fontWeight: FontWeight.bold),
+            style: textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
           ),
           Text(
             vehicle.licensePlate,
-            style: textTheme.bodyMedium
-                ?.copyWith(color: cs.onSurfaceVariant, letterSpacing: 1.2),
+            style: textTheme.bodyMedium?.copyWith(
+              color: cs.onSurfaceVariant,
+              letterSpacing: 1.2,
+            ),
           ),
           if (vehicle.year != null)
             Text(
               '${vehicle.year}',
-              style: textTheme.bodySmall
-                  ?.copyWith(color: cs.onSurfaceVariant),
+              style: textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             ),
 
           const SizedBox(height: 24),
           Text(
             'Documents',
-            style: textTheme.titleMedium
-                ?.copyWith(fontWeight: FontWeight.bold),
+            style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
 
@@ -364,12 +374,18 @@ class _DocumentRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(type.label,
-                    style: textTheme.bodyMedium
-                        ?.copyWith(fontWeight: FontWeight.w600)),
-                Text(type.description,
-                    style: textTheme.bodySmall
-                        ?.copyWith(color: cs.onSurfaceVariant)),
+                Text(
+                  type.label,
+                  style: textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  type.description,
+                  style: textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
               ],
             ),
           ),
@@ -380,14 +396,16 @@ class _DocumentRow extends StatelessWidget {
                 Text(
                   status.label,
                   style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: color),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
                 ),
                 Text(
                   _formatDate(doc!.expirationDate),
-                  style: textTheme.bodySmall
-                      ?.copyWith(color: cs.onSurfaceVariant),
+                  style: textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                  ),
                 ),
                 if (doc!.daysLeft >= 0)
                   Text(
@@ -404,8 +422,7 @@ class _DocumentRow extends StatelessWidget {
           ] else
             Text(
               'Not added',
-              style: textTheme.bodySmall
-                  ?.copyWith(color: cs.onSurfaceVariant),
+              style: textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             ),
         ],
       ),

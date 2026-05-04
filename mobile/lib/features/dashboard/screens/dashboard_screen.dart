@@ -41,13 +41,59 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     super.dispose();
   }
 
+  Future<void> _confirmLogout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Sign out?'),
+        content: const Text('You will need to sign in again to continue.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Sign out'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await ref.read(authProvider.notifier).logout();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Carlina'),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [cs.primary, cs.primaryContainer],
+            ),
+          ),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Image.asset('assets/logo.png', width: 35, height: 35),
+            ),
+            const SizedBox(width: 10),
+            const Text('Carlina'),
+          ],
+        ),
         actions: [
           if (auth.user != null)
             Padding(
@@ -55,12 +101,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
               child: IconButton(
                 icon: const Icon(Icons.logout_rounded),
                 tooltip: 'Sign out',
-                onPressed: () => ref.read(authProvider.notifier).logout(),
+                onPressed: _confirmLogout,
               ),
             ),
         ],
         bottom: TabBar(
           controller: _tabController,
+          indicatorWeight: 3,
           tabs: const [
             Tab(icon: Icon(Icons.directions_car_rounded), text: 'My Cars'),
             Tab(icon: Icon(Icons.group_rounded), text: 'Family'),
@@ -89,6 +136,7 @@ class _MyCarsTabState extends ConsumerState<_MyCarsTab> {
       builder: (ctx) => AlertDialog(
         title: const Text('Remove Vehicle'),
         content: Text('Remove $name from your garage?'),
+        actionsAlignment: MainAxisAlignment.center,
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
