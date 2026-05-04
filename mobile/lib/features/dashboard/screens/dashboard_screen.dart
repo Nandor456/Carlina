@@ -24,9 +24,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(_onTabChanged);
-    Future.microtask(
-      () => ref.read(vehiclesProvider.notifier).loadVehicles(),
-    );
+    Future.microtask(() => ref.read(vehiclesProvider.notifier).loadVehicles());
   }
 
   void _onTabChanged() {
@@ -71,10 +69,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       ),
       body: TabBarView(
         controller: _tabController,
-        children: const [
-          _MyCarsTab(),
-          FamilyScreen(),
-        ],
+        children: const [_MyCarsTab(), FamilyScreen()],
       ),
     );
   }
