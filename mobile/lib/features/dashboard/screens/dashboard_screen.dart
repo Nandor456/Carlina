@@ -31,8 +31,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   void _onTabChanged() {
     if (_tabController.indexIsChanging) return;
-    setState(() {});
-    // Refresh family data each time the Family tab becomes active.
     if (_tabController.index == 1) {
       // ignore: discarded_futures
       ref.read(familyProvider.notifier).load();
@@ -45,6 +43,51 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     super.dispose();
   }
 
+  @override
+  Widget build(BuildContext context) {
+    final auth = ref.watch(authProvider);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Carlina'),
+        actions: [
+          if (auth.user != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: IconButton(
+                icon: const Icon(Icons.logout_rounded),
+                tooltip: 'Sign out',
+                onPressed: () => ref.read(authProvider.notifier).logout(),
+              ),
+            ),
+        ],
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(icon: Icon(Icons.directions_car_rounded), text: 'My Cars'),
+            Tab(icon: Icon(Icons.group_rounded), text: 'Family'),
+          ],
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: const [
+          _MyCarsTab(),
+          FamilyScreen(),
+        ],
+      ),
+    );
+  }
+}
+
+class _MyCarsTab extends ConsumerStatefulWidget {
+  const _MyCarsTab();
+
+  @override
+  ConsumerState<_MyCarsTab> createState() => _MyCarsTabState();
+}
+
+class _MyCarsTabState extends ConsumerState<_MyCarsTab> {
   Future<void> _confirmDelete(String vehicleId, String name) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -73,80 +116,31 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   @override
   Widget build(BuildContext context) {
-    final auth = ref.watch(authProvider);
-    final isOnMyCars = _tabController.index == 0;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Carlina'),
-        actions: [
-          if (auth.user != null)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: IconButton(
-                icon: const Icon(Icons.logout_rounded),
-                tooltip: 'Sign out',
-                onPressed: () => ref.read(authProvider.notifier).logout(),
-              ),
-            ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(icon: Icon(Icons.directions_car_rounded), text: 'My Cars'),
-            Tab(icon: Icon(Icons.group_rounded), text: 'Family'),
-          ],
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _MyCarsTab(onDelete: _confirmDelete),
-          const FamilyScreen(),
-        ],
-      ),
-      floatingActionButton: isOnMyCars
-          ? FloatingActionButton.extended(
-              onPressed: () => showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                useSafeArea: true,
-                shape: const RoundedRectangleBorder(
-                  borderRadius:
-                      BorderRadius.vertical(top: Radius.circular(24)),
-                ),
-                builder: (_) => const AddVehicleBottomSheet(),
-              ),
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Add Vehicle'),
-            )
-          : null,
-    );
-  }
-}
-
-class _MyCarsTab extends ConsumerWidget {
-  const _MyCarsTab({required this.onDelete});
-
-  final Future<void> Function(String vehicleId, String name) onDelete;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(vehiclesProvider);
     final cs = Theme.of(context).colorScheme;
 
-    return RefreshIndicator(
-      onRefresh: () => ref.read(vehiclesProvider.notifier).loadVehicles(),
-      child: _buildBody(context, ref, state, cs),
+    return Scaffold(
+      body: RefreshIndicator(
+        onRefresh: () => ref.read(vehiclesProvider.notifier).loadVehicles(),
+        child: _buildBody(state, cs),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          useSafeArea: true,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          builder: (_) => const AddVehicleBottomSheet(),
+        ),
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Add Vehicle'),
+      ),
     );
   }
 
-  Widget _buildBody(
-    BuildContext context,
-    WidgetRef ref,
-    VehiclesState state,
-    ColorScheme cs,
-  ) {
+  Widget _buildBody(VehiclesState state, ColorScheme cs) {
     if (state.isLoading && state.vehicles.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -196,7 +190,7 @@ class _MyCarsTab extends ConsumerWidget {
         return VehicleCard(
           vehicle: v,
           onTap: () => context.push('/vehicle/${v.id}'),
-          onDelete: () => onDelete(v.id, '${v.make} ${v.model}'),
+          onDelete: () => _confirmDelete(v.id, '${v.make} ${v.model}'),
         );
       },
     );

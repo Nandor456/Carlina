@@ -3,23 +3,26 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
 
-class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key});
+class RegisterScreen extends ConsumerStatefulWidget {
+  const RegisterScreen({super.key});
 
   @override
-  ConsumerState<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _LoginScreenState extends ConsumerState<LoginScreen> {
+class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
+  final _confirmCtrl = TextEditingController();
   bool _obscurePass = true;
+  bool _obscureConfirm = true;
 
   @override
   void dispose() {
     _emailCtrl.dispose();
     _passCtrl.dispose();
+    _confirmCtrl.dispose();
     super.dispose();
   }
 
@@ -27,7 +30,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
     final success = await ref
         .read(authProvider.notifier)
-        .login(_emailCtrl.text.trim(), _passCtrl.text);
+        .register(
+          _emailCtrl.text.trim(),
+          _passCtrl.text,
+          _confirmCtrl.text,
+          null,
+        );
 
     if (success && mounted) context.go('/');
   }
@@ -54,7 +62,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 Icon(Icons.directions_car_rounded, size: 72, color: cs.primary),
                 const SizedBox(height: 12),
                 Text(
-                  'Carlina',
+                  'Create your account',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -98,6 +106,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ? null
                             : 'Minimum 8 characters',
                       ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _confirmCtrl,
+                        decoration: InputDecoration(
+                          labelText: 'Confirm Password',
+                          prefixIcon: const Icon(Icons.lock_outline_rounded),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscureConfirm
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                            ),
+                            onPressed: () => setState(
+                              () => _obscureConfirm = !_obscureConfirm,
+                            ),
+                          ),
+                        ),
+                        obscureText: _obscureConfirm,
+                        validator: (v) => v == _passCtrl.text
+                            ? null
+                            : 'Passwords do not match',
+                      ),
                       const SizedBox(height: 8),
 
                       // ── Error ──────────────────────────────
@@ -122,7 +152,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   color: Colors.white,
                                 ),
                               )
-                            : const Text('Sign In'),
+                            : const Text('Create Account'),
                       ),
                       const SizedBox(height: 18),
                       Row(
@@ -158,8 +188,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const SizedBox(height: 20),
 
                 TextButton(
-                  onPressed: () => context.go('/register'),
-                  child: const Text("Don't have an account? Register"),
+                  onPressed: () => context.go('/login'),
+                  child: const Text('Already have an account? Sign in'),
                 ),
                 const SizedBox(height: 32),
               ],

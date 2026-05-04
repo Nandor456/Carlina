@@ -39,9 +39,14 @@ class ApiService {
   Future<Map<String, dynamic>> register({
     required String email,
     required String password,
+    required String passwordConfirm,
     String? fullName,
   }) async {
-    final body = <String, dynamic>{'email': email, 'password': password};
+    final body = <String, dynamic>{
+      'email': email,
+      'password': password,
+      'passwordConfirm': passwordConfirm,
+    };
     if (fullName != null) body['fullName'] = fullName;
     final res = await _dio.post(ApiConstants.register, data: body);
     _ensureSuccess(res);

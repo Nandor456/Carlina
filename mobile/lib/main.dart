@@ -10,6 +10,7 @@ import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/providers/auth_provider.dart';
 import 'features/auth/screens/login_screen.dart';
+import 'features/auth/screens/register_screen.dart';
 import 'features/dashboard/screens/dashboard_screen.dart';
 import 'features/vehicle_detail/screens/vehicle_detail_screen.dart';
 import 'features/family/screens/family_member_vehicles_screen.dart';
@@ -76,15 +77,17 @@ final routerProvider = Provider<GoRouter>((ref) {
       final authState = ref.read(authProvider);
       final loggedIn = authState.isAuthenticated;
       final goingToLogin = state.matchedLocation == '/login';
+      final goingToRegister = state.matchedLocation == '/register';
       final goingToSplash = state.matchedLocation == '/splash';
+      final inAuthFlow = goingToLogin || goingToRegister;
 
       if (authState.isInitializing) {
         return goingToSplash ? null : '/splash';
       }
       if (!loggedIn) {
-        return goingToLogin ? null : '/login';
+        return inAuthFlow ? null : '/login';
       }
-      if (goingToLogin || goingToSplash) return '/';
+      if (inAuthFlow || goingToSplash) return '/';
       return null;
     },
     routes: [
@@ -94,6 +97,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             const Scaffold(body: Center(child: CircularProgressIndicator())),
       ),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
+      GoRoute(path: '/register', builder: (_, _) => const RegisterScreen()),
       GoRoute(path: '/', builder: (_, _) => const DashboardScreen()),
       GoRoute(
         path: '/vehicle/:id',

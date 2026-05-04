@@ -9,6 +9,9 @@ export class RegisterDto {
   password: string;
 
   @IsString()
+  passwordConfirm: string;
+
+  @IsString()
   @IsOptional()
   fullName?: string;
 }

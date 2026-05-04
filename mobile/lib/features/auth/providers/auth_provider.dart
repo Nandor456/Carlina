@@ -135,12 +135,18 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<bool> register(String email, String password, String? fullName) async {
+  Future<bool> register(
+    String email,
+    String password,
+    String passwordConfirm,
+    String? fullName,
+  ) async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       final json = await _api.register(
         email: email,
         password: password,
+        passwordConfirm: passwordConfirm,
         fullName: fullName,
       );
       await _persistToken(json);

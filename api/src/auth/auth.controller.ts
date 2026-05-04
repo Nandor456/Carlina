@@ -29,6 +29,10 @@ export class AuthController {
   // ── Register ──────────────────────────────────────────────
   @Post('register')
   async register(@Body() dto: RegisterDto) {
+    if (dto.password !== dto.passwordConfirm) {
+      throw new BadRequestException('Passwords do not match');
+    }
+
     const existing = await this.usersService.findByEmail(dto.email);
     if (existing) throw new ConflictException('Email already in use');
 
